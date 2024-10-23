@@ -69,7 +69,7 @@ export default class App {
 
   async createSession() {
     await wait(4000, 'Creating session', this)
-    const response = await this.fetch('https://sonic-hub1.joinrebellion.com/rpc', 'POST', {
+    const response = await this.fetch('https://arcade.hub.soniclabs.com/rpc', 'POST', {
       jsonrpc: '2.0',
       id: this.sessionId,
       method: 'createSession',
@@ -150,7 +150,7 @@ export default class App {
         'type': 'function'
       }])
       const data = abi.encodeFunctionData("approve", [this.address, ethers.MaxUint256])
-      const response = await this.fetch("https://sonic-hub1.joinrebellion.com/rpc", "POST", {
+      const response = await this.fetch("https://arcade.hub.soniclabs.com/rpc", "POST", {
         'jsonrpc': "2.0",
         'id': 0x7,
         'method': "call",
@@ -185,7 +185,7 @@ export default class App {
 
   async refund(game) {
     await wait(1500, `Refunding game ${game} to resolve awaiting random number`, this)
-    const response = await this.fetch('https://sonic-hub1.joinrebellion.com/rpc', "POST", {
+    const response = await this.fetch('https://arcade.hub.soniclabs.com/rpc', "POST", {
       'jsonrpc': "2.0",
       'id': this.sessionId,
       'method': "refund",
@@ -207,7 +207,7 @@ export default class App {
 
   async reIterate(game) {
     await wait(1500, `Reiterate game ${game} to resolve awaiting random number`, this)
-    const response = await this.fetch("https://sonic-hub1.joinrebellion.com/rpc", "POST", {
+    const response = await this.fetch("https://arcade.hub.soniclabs.com/rpc", "POST", {
       'jsonrpc': '2.0',
       'id': this.sessionId,
       'method': "reIterate",
@@ -262,7 +262,7 @@ export default class App {
 
   async permitTypedMessage() {
     await wait(4000, 'Try to permit Sonic Arcade contract', this)
-    const response = await this.fetch('https://sonic-hub1.joinrebellion.com/rpc', 'POST', {
+    const response = await this.fetch('https://arcade.hub.soniclabs.com/rpc', 'POST', {
       'id': this.sessionId,
       'jsonrpc': '2.0',
       'method': 'permitTypedMessage',
@@ -289,7 +289,7 @@ export default class App {
   }
 
   async performRpcRequest(method, params, headers, referer) {
-    return this.fetch('https://sonic-hub1.joinrebellion.com/rpc', 'POST', {
+    return this.fetch('https://arcade.hub.soniclabs.com/rpc', 'POST', {
       jsonrpc: '2.0',
       id: this.sessionId,
       method: method,
@@ -357,7 +357,7 @@ export default class App {
     await this.gameWait('mines', 4000, "Placed", this)
     await this.gameWait('mines', 4000, "Claiming mine game reward", this)
 
-    const response = await this.fetch('https://sonic-hub1.joinrebellion.com/rpc', 'POST', {
+    const response = await this.fetch('https://arcade.hub.soniclabs.com/rpc', 'POST', {
       'jsonrpc': "2.0",
       'id': this.sessionId,
       'method': "call",
