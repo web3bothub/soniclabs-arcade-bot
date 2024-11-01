@@ -28,7 +28,7 @@ class Log {
   }
 
   getLogger(account) {
-    if (account.startsWith('0x')) {
+    if (account && account.startsWith('0x')) {
       account = PRIVATE_KEYS.indexOf(account)
     }
 

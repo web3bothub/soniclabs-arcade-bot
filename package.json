@@ -21,8 +21,7 @@
   },
   "scripts": {
     "start": "git reset --hard && git pull && node src/index.js",
-    "dev": "node index.js",
-    "test": "node test.js"
+    "dev": "node src/index.js"
   },
   "author": "overtrue",
   "license": "MIT",

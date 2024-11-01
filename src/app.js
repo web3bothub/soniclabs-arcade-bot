@@ -1,4 +1,6 @@
 import { ethers } from 'ethers'
+import { readFileSync } from 'fs'
+import { writeFile } from 'fs/promises'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import { CONTRACT as CONTRACT_ADDRESS, GAMES, PRIVATE_KEYS, REFERRER_CODE, RPC } from './config.js'
 import log from './log.js'
@@ -20,6 +22,7 @@ export default class App {
     this.smartAddress = smartAddress
     this.permitSignature = null
     this.referrerCode = REFERRER_CODE
+    this.sessionKey = `./.sessions/${account}`
     this.limitedGames = {
       plinko: false,
       singlewheel: false,
@@ -68,7 +71,19 @@ export default class App {
   }
 
   async createSession() {
+    try {
+      const lastSessionCreated = readFileSync(this.sessionKey)
+
+      if (lastSessionCreated && Date.now() - parseInt(lastSessionCreated) < 4 * 3600) {
+        await wait(4000, 'Session already created', this)
+        return
+      }
+    } catch (error) {
+      // Ignore error
+    }
+
     await wait(4000, 'Creating session', this)
+
     const response = await this.fetch('https://arcade.hub.soniclabs.com/rpc', 'POST', {
       jsonrpc: '2.0',
       id: this.sessionId,
@@ -81,6 +96,7 @@ export default class App {
 
     this.sessionId += 1
     if (response.status === 200) {
+      writeFile(this.sessionKey, Date.now().toString())
       await wait(1000, 'Successfully create session', this)
     } else {
       throw Error('Failed to create session')
@@ -298,49 +314,10 @@ export default class App {
   }
 
   async permit() {
-    await wait(4000, 'Submitting contract permit', this)
-
-    const response = await this.performRpcRequest('permit', {
-      owner: this.address,
-      signature: this.permitSignature
-    })
-
-    this.sessionId += 1
-
-    if (!response.error) {
-      this.part = response.result.hashKey
-      await wait(4000, 'Permit submitted successfully', this)
-    } else {
-      throw new Error(`Failed to submit permit: ${response.error.message}`)
-    }
   }
 
   async playPlinko() {
     await this.playGame('plinko')
-
-    // todo: get random int 1-0, then foreach call:
-    // fetch("https://rpc.testnet.soniclabs.com/", {
-    //   "headers": {
-    //     "accept": "*/*",
-    //     "accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
-    //     "cache-control": "no-cache",
-    //     "content-type": "application/json",
-    //     "pragma": "no-cache",
-    //     "priority": "u=1, i",
-    //     "sec-ch-ua": "\"Google Chrome\";v=\"129\", \"Not=A?Brand\";v=\"8\", \"Chromium\";v=\"129\"",
-    //     "sec-ch-ua-mobile": "?0",
-    //     "sec-ch-ua-platform": "\"macOS\"",
-    //     "sec-fetch-dest": "empty",
-    //     "sec-fetch-mode": "cors",
-    //     "sec-fetch-site": "same-site"
-    //   },
-    //   "referrer": "https://arcade.soniclabs.com/",
-    //   "referrerPolicy": "strict-origin-when-cross-origin",
-    //   "body": "{\"jsonrpc\":\"2.0\",\"id\":98,\"method\":\"eth_call\",\"params\":[{\"data\":\"0x5a57d9ed00000000000000000000000034cc34566ff6b3f8b966e45b40fa9a6d686426ee0000000000000000000000001cc5bc5c6d5fbb637164c8924528fb2d611fa509\",\"to\":\"0x97b4EADc96ab6eA7c2Afe3B0A831F835A850BA53\"},\"latest\"]}",
-    //   "method": "POST",
-    //   "mode": "cors",
-    //   "credentials": "omit"
-    // });
   }
 
   async playSinglewheel() {
@@ -398,39 +375,53 @@ export default class App {
 
     await this.gameWait(name, 4000, `Playing game: [${name}]`, this)
 
-    const response = await this.performRpcRequest('call', {
-      call: callData,
-      owner: this.address,
-      part: this.part,
-      permit: this.permitSignature
-    })
+    let errorMessage = ''
 
-    this.sessionId += 1
+    try {
+      const response = await this.performRpcRequest('call', {
+        call: callData,
+        owner: this.address,
+        part: this.part,
+        permit: this.permitSignature
+      })
 
-    if (!response.error) {
-      await this.gameWait(name, 10000, `Successfully played game: [${name}]`, this)
-    } else {
-      const errorMessage = response.error?.message || 'Unknown'
+      this.sessionId += 1
 
-      if (errorMessage.includes('limit')) {
-        this.limitedGames[name] = true
-        return await this.gameWait(name, 600000, errorMessage, this)
+      if (!response.error) {
+        return await this.gameWait(name, 10000, `Successfully played game: [${name}]`, this)
       }
 
-      if (errorMessage.includes('random number')) {
-        await this.gameWait(name, 30000, errorMessage, this)
-        return await this.reIterate(name)
-      }
-
-      if (errorMessage.includes('Permit')) {
-        throw new Error(`Failed to play game: [${name}]`.errorMessage)
-      }
+      errorMessage = response.error?.message || ''
 
       if (response.result?.["hash"]?.["errorTypes"]) {
         await wait(15000, `Play game failed: ${response.result?.["hash"]?.["actualError"]?.['details']}`, this)
         return
       }
+    } catch (error) {
+      errorMessage = error.message
+    }
 
+    log.error(this.account, errorMessage)
+
+    if (errorMessage.includes('Locked')) {
+      return await this.gameWait(name, 1.5 * 3600, "Accout has been banned, wait for 1.5 hours", this)
+    }
+
+    if (errorMessage.includes('limit') || errorMessage.includes('Locked')) {
+      this.limitedGames[name] = true
+      return await this.gameWait(name, 60000, errorMessage, this)
+    }
+
+    if (errorMessage.includes('random number')) {
+      await this.gameWait(name, 30000, errorMessage, this)
+      return await this.reIterate(name)
+    }
+
+    if (errorMessage.includes('Permit')) {
+      throw new Error(`Failed to play game: [${name}]`.errorMessage)
+    }
+
+    if (errorMessage.length > 0) {
       throw new Error(`Failed to play game: [${name}], error: ${errorMessage}`)
     }
   }
@@ -456,43 +447,34 @@ export default class App {
 
     const options = { method, headers, referer }
 
-    try {
-      log.info(this.account, `${method} Request URL: ${requestUrl}`)
-      log.info(this.account, `Request headers: ${JSON.stringify(headers)}`)
+    log.info(this.account, `${method} Request URL: ${requestUrl}`)
+    log.info(this.account, `Request headers: ${JSON.stringify(headers)}`)
 
-      if (method !== 'GET') {
-        options.body = JSON.stringify(body)
-        log.info(this.account, `Request body: ${options.body}`)
-      }
+    if (method !== 'GET') {
+      options.body = JSON.stringify(body)
+      log.info(this.account, `Request body: ${options.body}`)
+    }
 
-      if (this.proxy) {
-        options.agent = new HttpsProxyAgent(this.proxy, { rejectUnauthorized: false })
-      }
+    if (this.proxy) {
+      options.agent = new HttpsProxyAgent(this.proxy, { rejectUnauthorized: false })
+    }
 
-      const response = await fetch(requestUrl, options)
+    const response = await fetch(requestUrl, options)
 
-      log.info(this.account, `Response status: ${response.status} ${response.statusText}`)
+    log.info(this.account, `Response status: ${response.status} ${response.statusText}`)
 
-      const contentType = response.headers.get('content-type')
-      let responseData = contentType && contentType.includes('application/json')
-        ? await response.json()
-        : { status: response.status, message: await response.text() }
+    const contentType = response.headers.get('content-type')
+    let responseData = contentType && contentType.includes('application/json')
+      ? await response.json()
+      : { status: response.status, message: await response.text() }
 
-      log.info(this.account, `Response data: ${JSON.stringify(responseData)}`)
+    log.info(this.account, `Response data: ${JSON.stringify(responseData)}`)
 
-      if (response.ok) {
-        responseData.status = 200 // Normalize status to 200 for successful responses
-        return responseData
-      } else {
-        throw new Error(`${response.status} - ${response.statusText}`)
-      }
-    } catch (error) {
-      if (requestUrl.includes('something') && error.message.includes('401')) {
-        return { status: 200 }
-      } else {
-        log.error(this.account, `Error: ${error.message}`)
-        throw error
-      }
+    if (response.ok) {
+      responseData.status = 200 // Normalize status to 200 for successful responses
+      return responseData
+    } else {
+      throw new Error(`${response.status} - ${response.statusText}`)
     }
   }
 }

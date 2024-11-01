@@ -35,7 +35,7 @@ async function run(account, smartAddress, proxy) {
     await play(app, 'singlewheel')
 
     // Schedule next cycle
-    const duration = 4 * 3600 * 1000 // 4h
+    const duration = 8 * 3600 * 1000 // 8h
     log.info(account, `Cycle complete for account ${app.address}. pausing for ${toHumanTime(duration)}`)
     await wait(duration, `Delaying for next cycle: ${toHumanTime(duration)}`, app)
 
