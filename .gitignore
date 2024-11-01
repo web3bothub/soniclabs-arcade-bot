@@ -7,4 +7,3 @@ proxies.txt
 .env
 *.log
 *.out
-./.sessions/.gitkeep
