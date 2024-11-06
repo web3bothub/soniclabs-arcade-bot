@@ -79,7 +79,7 @@ export default class App {
         return
       }
     } catch (error) {
-      // Ignore error
+      log.error(this.account, `Failed to read session key: ${error}`)
     }
 
     await wait(4000, 'Creating session', this)
@@ -314,6 +314,18 @@ export default class App {
   }
 
   async permit() {
+    await wait(4000, 'Submitting contract permit', this)
+    const response = await this.performRpcRequest('permit', {
+      owner: this.address,
+      signature: this.permitSignature
+    })
+    this.sessionId += 1
+    if (!response.error) {
+      this.part = response.result.hashKey
+      await wait(4000, 'Permit submitted successfully', this)
+    } else {
+      throw new Error(`Failed to submit permit: ${response.error.message}`)
+    }
   }
 
   async playPlinko() {
