@@ -368,13 +368,13 @@ export default class App {
     }, 'https://arcade.soniclabs.com/', true)
 
     if (response.error) {
-      await this.gameWait('mines', 30000, `Failed to claim mine game: ${response.error?.["message"]}`, this)
+      await this.gameWait('mines', 60000, `Failed to claim mine game: ${response.error?.["message"]}`, this)
     }
 
     if (response.result?.["hash"]?.['errorTypes']) {
-      await this.gameWait('mines', 30000, `Claim failed: ${response.result?.["hash"]?.["actualError"]?.["details"]}`, this)
+      await this.gameWait('mines', 60000, `Claim failed: ${response.result?.["hash"]?.["actualError"]?.["details"]}`, this)
     } else {
-      await this.gameWait('mines', 30000, "Successfully play and claim mine game.", this)
+      await this.gameWait('mines', 60000, "Successfully play and claim mine game.", this)
     }
   }
 
@@ -385,7 +385,7 @@ export default class App {
 
     const callData = GAMES[name]
 
-    await this.gameWait(name, 4000, `Playing game: [${name}]`, this)
+    await this.gameWait(name, 10000, `Playing game: [${name}]`, this)
 
     let errorMessage = ''
 
@@ -416,7 +416,7 @@ export default class App {
     log.error(this.account, errorMessage)
 
     if (errorMessage.includes('Locked')) {
-      return await this.gameWait(name, 1.5 * 3600, "Accout has been banned, wait for 1.5 hours", this)
+      return await this.gameWait(name, 1.8 * 3600, "Accout has been banned, wait for 1.8 hours", this)
     }
 
     if (errorMessage.includes('limit') || errorMessage.includes('Locked')) {
