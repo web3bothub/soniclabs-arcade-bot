@@ -1,5 +1,4 @@
 import { ethers } from 'ethers'
-import { readFileSync } from 'fs'
 import { writeFile } from 'fs/promises'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import { CONTRACT as CONTRACT_ADDRESS, GAMES, PRIVATE_KEYS, REFERRER_CODE, RPC } from './config.js'
@@ -51,7 +50,7 @@ export default class App {
   async connect() {
     try {
       const cleanPrivateKey = this.account.replace(/^0x/, '')
-      await wait(4000, 'Connecting to account: ' + (PRIVATE_KEYS.indexOf(this.account) + 1), this)
+      await wait(1500, 'Connecting to account: ' + (PRIVATE_KEYS.indexOf(this.account) + 1), this)
       const accountType = getPrivateKeyType(cleanPrivateKey)
       log.info(this.account, 'Account type: ' + accountType)
 
@@ -64,25 +63,14 @@ export default class App {
       }
 
       this.address = this.wallet.address
-      await wait(4000, 'Wallet address: ' + JSON.stringify(this.address), this)
+      await wait(1000, 'Wallet address: ' + JSON.stringify(this.address), this)
     } catch (error) {
       throw error
     }
   }
 
   async createSession() {
-    try {
-      const lastSessionCreated = readFileSync(this.sessionKey)
-
-      if (lastSessionCreated && Date.now() - parseInt(lastSessionCreated) < 4 * 3600) {
-        await wait(4000, 'Session already created', this)
-        return
-      }
-    } catch (error) {
-      log.error(this.account, `Failed to read session key: ${error}`)
-    }
-
-    await wait(4000, 'Creating session', this)
+    await wait(1000, 'Creating session', this)
 
     const response = await this.fetch('https://arcade.hub.soniclabs.com/rpc', 'POST', {
       jsonrpc: '2.0',
@@ -92,7 +80,7 @@ export default class App {
         owner: this.wallet.address,
         until: Date.now() + 86400000 // 24 hours in milliseconds
       }
-    }, { network: 'SONIC', pragma: 'no-cache', 'x-owner': this.address }, 'https://arcade.soniclabs.com/', true)
+    }, { network: 'SONIC', pragma: 'no-cache', 'X-Owner': this.address }, 'https://arcade.soniclabs.com/', true)
 
     this.sessionId += 1
     if (response.status === 200) {
@@ -117,7 +105,7 @@ export default class App {
   }
 
   async getUser() {
-    await wait(4000, 'Fetching user information', this)
+    await wait(1000, 'Fetching user information', this)
     const response = await this.fetch(`https://airdrop.soniclabs.com/api/trpc/user.findOrCreate?batch=1&input=${encodeURIComponent(JSON.stringify({ 0: { json: { address: this.wallet.address } } }))}`, 'GET')
     if (response.status == 200) {
       this.user = response[0].result.data.json
@@ -131,7 +119,7 @@ export default class App {
     if (!this.smartAddress) {
       await wait(500, 'Smart address not configured, skip', this)
     }
-    await wait(4000, "Getting user points", this)
+    await wait(1000, "Getting user points", this)
     const response = await this.fetch(`https://arcade.gateway.soniclabs.com/game/points-by-player?wallet=${this.smartAddress}`, 'GET', undefined, undefined, 'https://arcade.soniclabs.com/', true)
 
     if (response.status == 200) {
@@ -184,14 +172,14 @@ export default class App {
         'network': "SONIC",
         'pragma': "no-cache",
         'priority': "u=1, i",
-        'x-owner': this.address
+        'X-Owner': this.address
       }, "https://arcade.soniclabs.com/", true)
       this.sessionId += 1
       if (response.status == 200) {
         await wait(1500, "User key registered", this)
         await this.getPoints()
       } else {
-        await wait(4000, "Failed to register user key", this)
+        await wait(1000, "Failed to register user key", this)
         await this.register()
       }
     } catch (error) {
@@ -211,7 +199,7 @@ export default class App {
       }
     }, {
       'network': "SONIC",
-      'x-owner': this.address
+      'X-Owner': this.address
     }, "https://arcade.soniclabs.com/", true)
     this.sessionId += 0x1
     if (response.status == 0xc8) {
@@ -233,7 +221,7 @@ export default class App {
       }
     }, {
       'network': "SONIC",
-      'x-owner': this.address
+      'X-Owner': this.address
     }, "https://arcade.soniclabs.com/", true)
     this.sessionId += 0x1
     if (response.status == 0xc8) {
@@ -244,7 +232,7 @@ export default class App {
   }
 
   async connectToSonic() {
-    await wait(4000, 'Connecting to Sonic Arcade', this)
+    await wait(500, 'Connecting to Sonic Arcade', this)
 
     const messageToSign = "I'm joining Sonic Airdrop Dashboard with my wallet, have been referred by " + this.referrerCode + ", and I agree to the terms and conditions.\nWallet address:\n" + this.address + "\n"
     log.info(this.account, 'Message to sign: ' + messageToSign)
@@ -252,12 +240,12 @@ export default class App {
     this.signatureMessage = await this.wallet.signMessage(messageToSign)
     log.info(this.account, 'signature: ' + this.signatureMessage)
 
-    await wait(4000, 'Successfully connected to Sonic Dapp', this)
+    await wait(500, 'Successfully connected to Sonic Dapp', this)
   }
 
   async tryToUpdateReferrer() {
     try {
-      await wait(4000, 'Validating invite code', this)
+      await wait(100, 'Validating invite code', this)
 
       if (this.user.invitedCode == null) {
         const response = await this.fetch('/api/trpc/user.setInvited?batch=1', 'POST', {
@@ -265,11 +253,11 @@ export default class App {
         })
 
         if (response.status == 200) {
-          await wait(4000, 'Successfully updated the invite code', this)
+          await wait(1000, 'Successfully updated the invite code', this)
           await this.getUser()
         }
       } else {
-        await wait(4000, 'Invite code already set', this)
+        await wait(1000, 'Invite code already set', this)
       }
     } catch (error) {
       log.error(this.account, `Failed to update user invite code: ${error}`)
@@ -277,7 +265,7 @@ export default class App {
   }
 
   async permitTypedMessage() {
-    await wait(4000, 'Try to permit Sonic Arcade contract', this)
+    await wait(1000, 'Try to permit Sonic Arcade contract', this)
     const response = await this.fetch('https://arcade.hub.soniclabs.com/rpc', 'POST', {
       'id': this.sessionId,
       'jsonrpc': '2.0',
@@ -289,7 +277,7 @@ export default class App {
       'network': 'SONIC',
       'pragma': 'no-cache',
       'priority': 'u=1, i',
-      'x-owner': this.address
+      'X-Owner': this.address
     }, 'https://arcade.soniclabs.com/', true)
     this.sessionId += 1
 
@@ -300,7 +288,31 @@ export default class App {
       this.permitSignature = await this.wallet.signTypedData(message.json.domain, message.json.types, message.json.message)
       await this.permit()
     } else {
+      if (response.status == 401) {
+        await wait(4000, 'Failed to permit Sonic Arcade contract, Maybe anti-bot protection, try to play the games on the website first.', this)
+        await this.createNonce()
+      }
+
       throw Error('Failed to Create Sonic Arcade Sessions')
+    }
+  }
+
+  async createNonce() {
+    await wait(500, 'Creating nonce', this)
+    const response = await this.fetch('https://arcade.hub.soniclabs.com/rpc', 'POST', {
+      jsonrpc: '2.0',
+      id: this.sessionId,
+      method: 'createNonce',
+      params: {
+        owner: this.address
+      }
+    }, { network: 'SONIC', pragma: 'no-cache', 'X-Owner': this.address }, 'https://arcade.soniclabs.com/', true)
+
+    this.sessionId += 1
+    if (response.status == 200) {
+      await wait(500, 'Successfully created nonce', this)
+    } else {
+      throw Error('Failed to create nonce, please play the games on the website first.')
     }
   }
 
@@ -310,11 +322,11 @@ export default class App {
       id: this.sessionId,
       method: method,
       params: params
-    }, headers || { network: 'SONIC', pragma: 'no-cache', 'priority': 'u=1, i', 'x-owner': this.address }, 'https://arcade.soniclabs.com/')
+    }, headers || { network: 'SONIC', pragma: 'no-cache', 'priority': 'u=1, i', 'X-Owner': this.address }, 'https://arcade.soniclabs.com/')
   }
 
   async permit() {
-    await wait(4000, 'Submitting contract permit', this)
+    await wait(500, 'Submitting contract permit', this)
     const response = await this.performRpcRequest('permit', {
       owner: this.address,
       signature: this.permitSignature
@@ -322,7 +334,7 @@ export default class App {
     this.sessionId += 1
     if (!response.error) {
       this.part = response.result.hashKey
-      await wait(4000, 'Permit submitted successfully', this)
+      await wait(500, 'Permit submitted successfully', this)
     } else {
       throw new Error(`Failed to submit permit: ${response.error.message}`)
     }
@@ -343,8 +355,8 @@ export default class App {
       return
     }
 
-    await this.gameWait('mines', 4000, "Placed", this)
-    await this.gameWait('mines', 4000, "Claiming mine game reward", this)
+    await this.gameWait('mines', 600, "Placed", this)
+    await this.gameWait('mines', 100, "Claiming mine game reward", this)
 
     const response = await this.fetch('https://arcade.hub.soniclabs.com/rpc', 'POST', {
       'jsonrpc': "2.0",
@@ -364,17 +376,17 @@ export default class App {
       'network': "SONIC",
       'pragma': "no-cache",
       'priority': "u=1, i",
-      'x-owner': this.address
+      'X-Owner': this.address
     }, 'https://arcade.soniclabs.com/', true)
 
     if (response.error) {
-      await this.gameWait('mines', 60000, `Failed to claim mine game: ${response.error?.["message"]}`, this)
+      await this.gameWait('mines', 10000, `Failed to claim mine game: ${response.error?.["message"]}`, this)
     }
 
     if (response.result?.["hash"]?.['errorTypes']) {
-      await this.gameWait('mines', 60000, `Claim failed: ${response.result?.["hash"]?.["actualError"]?.["details"]}`, this)
+      await this.gameWait('mines', 10000, `Claim failed: ${response.result?.["hash"]?.["actualError"]?.["details"]}`, this)
     } else {
-      await this.gameWait('mines', 60000, "Successfully play and claim mine game.", this)
+      await this.gameWait('mines', 1500, "Successfully play and claim mine game.", this)
     }
   }
 
@@ -385,7 +397,7 @@ export default class App {
 
     const callData = GAMES[name]
 
-    await this.gameWait(name, 10000, `Playing game: [${name}]`, this)
+    await this.gameWait(name, 1000, `Playing game: [${name}]`, this)
 
     let errorMessage = ''
 
@@ -400,13 +412,13 @@ export default class App {
       this.sessionId += 1
 
       if (!response.error) {
-        return await this.gameWait(name, 10000, `Successfully played game: [${name}]`, this)
+        return await this.gameWait(name, 2000, `Successfully played game: [${name}]`, this)
       }
 
       errorMessage = response.error?.message || ''
 
       if (response.result?.["hash"]?.["errorTypes"]) {
-        await wait(15000, `Play game failed: ${response.result?.["hash"]?.["actualError"]?.['details']}`, this)
+        await wait(3000, `Play game failed: ${response.result?.["hash"]?.["actualError"]?.['details']}`, this)
         return
       }
     } catch (error) {
@@ -415,22 +427,29 @@ export default class App {
 
     log.error(this.account, errorMessage)
 
+    if (errorMessage.includes('Please refresh or try again later')) {
+      await this.createSession()
+      await this.createNonce()
+      return await this.playGame(name)
+    }
+
     if (errorMessage.includes('Locked')) {
       return await this.gameWait(name, 1.8 * 3600, "Accout has been banned, wait for 1.8 hours", this)
     }
 
     if (errorMessage.includes('limit') || errorMessage.includes('Locked')) {
       this.limitedGames[name] = true
-      return await this.gameWait(name, 60000, errorMessage, this)
+      return await this.gameWait(name, 1000, errorMessage, this)
     }
 
     if (errorMessage.includes('random number')) {
-      await this.gameWait(name, 30000, errorMessage, this)
+      await this.gameWait(name, 5000, errorMessage, this)
       return await this.reIterate(name)
     }
 
-    if (errorMessage.includes('Permit')) {
-      throw new Error(`Failed to play game: [${name}]`.errorMessage)
+    if (errorMessage.includes('Permit could not verify')) {
+      await this.register()
+      throw new Error(`Failed to play game: [${name}]，error: ${errorMessage}`)
     }
 
     if (errorMessage.length > 0) {

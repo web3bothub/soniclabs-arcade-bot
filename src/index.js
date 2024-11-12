@@ -12,7 +12,7 @@ async function play(app, game) {
       await app[method]()
       await app.getPoints()
     } catch (error) {
-      await app.gameWait(game, 30000, error)
+      await app.gameWait(game, 5000, error)
     }
   }
 }
@@ -41,6 +41,12 @@ async function run(account, smartAddress, proxy) {
 
     return run(account, smartAddress, proxy)  // Restart cycle
   } catch (error) {
+    if (error.message?.includes('Locked')) {
+      log.info(account, `Account ${app.address} is locked. pausing for 2 hours.`)
+      await wait(2 * 3600 * 1000, `Account ${app.address} is locked. pausing for 2 hours.`, app)
+      return run(account, smartAddress, proxy)  // Retry operation
+    }
+
     log.info(account, `Error encountered. retrying in 120 seconds.`)
     await wait(120000, `Error: ${error.message || JSON.stringify(error)}. retrying in 120 seconds`, app)
     return run(account, smartAddress, proxy)  // Retry operation
