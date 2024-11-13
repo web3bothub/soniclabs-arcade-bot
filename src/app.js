@@ -281,7 +281,7 @@ export default class App {
     }, 'https://arcade.soniclabs.com/', true)
     this.sessionId += 1
 
-    if (response.status == 200) {
+    if (!response.error && response.status == 200 ) {
       const message = JSON.parse(response.result.typedMessage)
       await wait(500, 'Successfully create permit', this)
       await wait(500, 'Approving permit message', this)
