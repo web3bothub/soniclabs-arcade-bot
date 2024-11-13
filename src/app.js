@@ -281,19 +281,15 @@ export default class App {
     }, 'https://arcade.soniclabs.com/', true)
     this.sessionId += 1
 
-    if (!response.error && response.status == 200 ) {
+    if (!response.error && response.status == 200) {
       const message = JSON.parse(response.result.typedMessage)
       await wait(500, 'Successfully create permit', this)
       await wait(500, 'Approving permit message', this)
       this.permitSignature = await this.wallet.signTypedData(message.json.domain, message.json.types, message.json.message)
       await this.permit()
     } else {
-      if (response.status == 401) {
-        await wait(4000, 'Failed to permit Sonic Arcade contract, Maybe anti-bot protection, try to play the games on the website first.', this)
-        await this.createNonce()
-      }
-
-      throw Error('Failed to Create Sonic Arcade Sessions')
+      await wait(4000, 'Failed to permit Sonic Arcade contract, Maybe anti-bot protection, try to play the games on the website first.', this)
+      await this.createNonce()
     }
   }
 
