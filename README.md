@@ -1,5 +1,8 @@
 # Soniclabs Arcade Testnet BOT
 
+> [!warning]
+> This project has been archived and no longer maintained.
+
 [手把手中文使用教程](https://mirror.xyz/0xe8224b3E9C8d35b34D088BB5A216B733a5A6D9EA/pEf4ou_1otpEkc4V3E4a014cwKmaM8c8s6ODb_b0ipg)
 
 About Sonic Labs (Prev Fantom)
